@@ -1,10 +1,18 @@
 //https://developer.mozilla.org/en-US/docs/Learn/Server-side/Express_Nodejs/development_environment
-const express = require('express');
-const { body, validationResult, query } = require('express-validator');
+import express from 'express';
+import {
+  checkSchema,
+  query,
+  body,
+  validationResult,
+  matchedData,
+} from 'express-validator';
+import { createUserValidationSchema } from './utils/validationSchemas.mjs';
+
 const app = express();
 
 app.use(express.json());
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 //const cors = require("cors");
 
 //app.use(cors());
@@ -84,17 +92,26 @@ app.get(
   }
 );
 
-app.post('/api/users', (request, response) => {
-  // Log the request body
-  console.log(request.body);
-  const { body } = request;
-  const newUser = {
-    id: mockUsers[mockUsers.length - 1].id + 1,
-    ...body,
-  };
-  mockUsers.push(newUser);
-  response.status(201).send(newUser);
-});
+app.post(
+  '/api/users',
+  checkSchema(createUserValidationSchema),
+  (request, response) => {
+    // Log the request body
+    console.log(request.body);
+    const result = validationResult(request);
+    console.log('🚀 ~ result:', result);
+    if (!result.isEmpty()) {
+      return response.status(400).send({ errors: result.array() });
+    }
+    const data = matchedData(request);
+    const newUser = {
+      id: mockUsers[mockUsers.length - 1].id + 1,
+      ...data,
+    };
+    mockUsers.push(newUser);
+    response.status(201).send(newUser);
+  }
+);
 app.use(loggingMiddleware);
 
 app.get('/api/users/:id', resolveUserByUserId, (request, response) => {
